@@ -12,7 +12,7 @@ case class toReducer[K2,V2](word:K2, fitxers:List[V2])
 case class fromReducer[K2,V3](finals: (K2,V3))
 
 
-// Els actors mappers són polimòrfics ja que  reben la funció de mapping polimòrfica que han d'aplicar
+// Els actors mappers són polimòrfics ja que reben la funció de mapping polimòrfica que han d'aplicar
 class Mapper[K1,V1,K2,V2](mapping:(K1,List[V1]) => List[(K2,V2)]) extends Actor {
   def receive: Receive = {
     // cal anotar clau:K1 i valor:List[V1] per tal d'instanciar adequadament el missatge toMapper amb les variables de tipus de Mapper
