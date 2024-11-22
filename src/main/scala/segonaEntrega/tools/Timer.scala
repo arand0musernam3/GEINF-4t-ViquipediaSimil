@@ -1,4 +1,4 @@
-package segonaEntrega.timer
+package segonaEntrega.tools
 import scala.util.{Try, Success, Failure}
 
 object Timer {
@@ -14,7 +14,7 @@ object Timer {
 
         val elapsedTime = (endTime - startTime) / 1_000_000_000.0d // ns to s
 
-        println(s"Execution took $elapsedTime s")
+        println(f"Execution took $elapsedTime%.4f s")
 
         result match {
             case Success(value) => value

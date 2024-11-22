@@ -4,13 +4,15 @@ import akka.actor.{Actor, ActorRef, Props}
 // Les case class hauran de polimòrfiques en les "claus" i "valors" que s'utilitzen
 // ja que  el MapReduce també serà polimòrfic, sinó, perdríem la genericitat.
 
+// CASE CLASS DEFINITIONS (for pattern matching)
+// =============================================
 case class EstablishNumberOfActors(nactors: Int)
 case class MapReduceCompute()
 case class toMapper[K1,V1](fitxer: K1, text: List[V1])
 case class fromMapper[K2,V2](intermig: List[(K2,V2)])
 case class toReducer[K2,V2](word:K2, fitxers:List[V2])
 case class fromReducer[K2,V3](finals: (K2,V3))
-
+// =============================================
 
 // Els actors mappers són polimòrfics ja que reben la funció de mapping polimòrfica que han d'aplicar
 class Mapper[K1,V1,K2,V2](mapping:(K1,List[V1]) => List[(K2,V2)]) extends Actor {

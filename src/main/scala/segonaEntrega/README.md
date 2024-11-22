@@ -8,3 +8,19 @@
 6. MR demana input, funcio mapping i funcio reduce. S'espavila de gestionar la resta.
 7. puta mare
 8. a mirar després examen, tenim una referència al git que ens va donar el profe no se quan.
+
+
+**Pistes** 
+- A la modificacio del MapReduce per tenir un cert nombre de mappers i reducers, us podeu
+inspirar en com es repartia el comptatge de primers entre els mappers i els reducers a
+l’exemple vist a classe. 
+- L’input dels MapReduce que han de treballar amb els fitxers hauria de ser una llista dels
+noms dels fitxers, de manera que les funcions de mapping ja fessin la feina de llegir i
+processar-los. 
+- És important que, per fer la recomanació de les pàgines mes importants donada una query,
+treballeu amb els documents on, dins del corpus, aparegui aquesta query. Per aconseguir-
+ho, podeu fer us del metode ngrames que us vam fer implementar a la primera part de la
+practica. 
+- La recomanacio de les 100 pagines mes rellevants i la similitud de 0.5 son uns mınims.
+Com mes queries complexes i mes fitxers pugueu tractar, millor. Podrıeu arribar a fer
+queries que apareguin en totes les pagines?
