@@ -1,5 +1,4 @@
 import pda.practica.DocumentSimilarity
-import pda.practica.DocumentSimilarity.cosineSim
 
 import java.io.File
 import java.nio.charset.StandardCharsets
