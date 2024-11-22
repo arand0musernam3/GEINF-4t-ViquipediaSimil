@@ -27,15 +27,15 @@ object Main extends App {
         println("Counting the average number of references...")
         // You will enter the code for this
         val result = Timer.timeMeasurement({
-            //TODO FIX THIS MESS
-            MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
+            //TODO FIX THIS MESS (pues ni tan mal)
+            MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, Nil),
                 MappingReduceFunctions.mappingCountReferences,
                 MappingReduceFunctions.reduceCountReferences)
         })
 
         //print(result)
 
-        val averageReferenceCount = if (result.size > 0) result.values.sum.toDouble / result.size else 0.0d
+        val averageReferenceCount = if (result.nonEmpty) result.values.sum.toDouble / result.size else 0.0d
         println(f"\n\nAverage number of unique references: $averageReferenceCount%.2f")
     }
 
@@ -44,14 +44,14 @@ object Main extends App {
         println("Please enter your query:")
         val query = readLine()
         println(s"Running your code with query: $query")
-        //val result = Timer.timeMeasurement({
-        //    //TODO FIX THIS MESS
-        //    MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
-        //        MappingReduceFunctions.mappingQueryRecommendation(query, _, _),
-        //        MappingReduceFunctions.reduceCountReferences)
-        //})
+        val result = Timer.timeMeasurement({
+            //TODO FIX THIS MESS
+            MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
+                MappingReduceFunctions.mappingFilterNGrama(query, _, _),
+                MappingReduceFunctions.reduceFilterNGrama)
+        })
 //
-        //print(result)
+        print(result)
 
         //TODO
         //Timer.timeMeasurement()

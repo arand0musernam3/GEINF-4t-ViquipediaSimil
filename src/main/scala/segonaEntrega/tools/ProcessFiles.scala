@@ -10,7 +10,7 @@ import scala.xml.{Elem, XML}
 
 object ProcessFiles {
 
-    case class ViquipediaFile(titol: String, contingut: String, refs: List[String])
+    case class ViquipediaFile(title: String, content: String, refs: List[String])
 
     def readFile(file: String): String = {
         val initialFile = new File(file)
@@ -61,7 +61,7 @@ object ProcessFiles {
     }
 
     def filterViquipediaReferences(file: ViquipediaFile): ViquipediaFile = {
-        ViquipediaFile(file.titol, file.contingut, filterViquipediaReferences(file.refs))
+        ViquipediaFile(file.title, file.content, filterViquipediaReferences(file.refs))
     }
 
     def filterViquipediaReferences(refs: List[String]): List[String] = {
