@@ -40,21 +40,25 @@ object Main extends App {
     }
 
     // Placeholder for reading and running a query from the keyboard
-    private def readAndRunQuery(): Unit = {
+    private def recommendationBasedOnQuery(): Unit = {
         println("Please enter your query:")
         val query = readLine()
-        println(s"Running your code with query: $query")
-        val result = Timer.timeMeasurement({
+        println()
+        val occurrencesPerFile = Timer.timeMeasurement({
             //TODO FIX THIS MESS
-            MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
+            MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("subset_viqui_files")) yield (file, List()),
                 MappingReduceFunctions.mappingFilterNGrama(query, _, _),
                 MappingReduceFunctions.reduceFilterNGrama)
         })
-//
-        print(result)
 
-        //TODO
-        //Timer.timeMeasurement()
+        occurrencesPerFile.foreach {case (vf, count) => println(s"$vf -> $count")}
+
+        val PRvalue = Timer.timeMeasurement({
+            MRWrapper.MR(occurrencesPerFile.toList,
+
+            )
+        })
+
     }
 
     // Toggle number of actors
@@ -84,8 +88,8 @@ object Main extends App {
     while (continue) {
         println("Select an option:")
         println("1. Test a function")
-        println("2. Count the average number of references")
-        println("3. Read a query and run your code")
+        println("2. Count the average number of references of all documents")
+        println("3. Recommendation based on query")
         println("4. Toggle number of actors")
         println("5. Quit")
         print("Option: ")
@@ -100,7 +104,7 @@ object Main extends App {
                 countAverageReferences()
 
             case "3" =>
-                readAndRunQuery()
+                recommendationBasedOnQuery()
 
             case "4" =>
                 toggleNumberOfActors()

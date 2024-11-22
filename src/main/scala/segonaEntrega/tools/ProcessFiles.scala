@@ -10,7 +10,9 @@ import scala.xml.{Elem, XML}
 
 object ProcessFiles {
 
-    case class ViquipediaFile(title: String, content: String, refs: List[String])
+    case class ViquipediaFile(title: String, content: String, refs: List[String], file: File) {
+        override def toString: String = s"ViquipediaFile(title: $title, filePath: $file, nº refs: ${refs.length})"
+    }
 
     def readFile(file: String): String = {
         val initialFile = new File(file)
@@ -57,11 +59,11 @@ object ProcessFiles {
         val refs = (refRegex findAllIn content).toList //tot el que està entre [[ ]]
 
         xmlleg.close()
-        ViquipediaFile(title, content, refs)
+        ViquipediaFile(title, content, refs, new File(filename))
     }
 
     def filterViquipediaReferences(file: ViquipediaFile): ViquipediaFile = {
-        ViquipediaFile(file.title, file.content, filterViquipediaReferences(file.refs))
+        ViquipediaFile(file.title, file.content, filterViquipediaReferences(file.refs), file.file)
     }
 
     def filterViquipediaReferences(refs: List[String]): List[String] = {

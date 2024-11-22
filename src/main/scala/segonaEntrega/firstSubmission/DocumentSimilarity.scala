@@ -73,15 +73,16 @@ object DocumentSimilarity {
     freqCounts.toMap
   }
 
-  def ngrames(n: Int, string: String, print: Boolean = true): Seq[(String, Int)] = {
-    val aux = filterWords(string)
+  def ngrames(n: Int, string: String, print: Boolean = true, sort: Boolean = true): Seq[(String, Int)] = {
+    var aux = filterWords(string)
       .sliding(n)
       .map(_.mkString(" "))
       .toSeq
       .groupBy(identity)
       .view.mapValues(_.length)
       .toSeq
-      .sortBy(-_._2)
+
+    if (sort) aux = aux.sortBy(-_._2)
 
     if (print) {
       aux.take(10).foreach { case (string, count) =>

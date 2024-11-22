@@ -1,6 +1,7 @@
 package segonaEntrega.mapreduce
-import segonaEntrega.tools.ProcessFiles
+import segonaEntrega.tools.{PageRank, ProcessFiles}
 import segonaEntrega.firstSubmission.DocumentSimilarity
+import segonaEntrega.tools.ProcessFiles.ViquipediaFile
 
 import java.io.File
 
@@ -26,17 +27,24 @@ object MappingReduceFunctions {
     //    (file, ProcessFiles.filterViquipediaReferences(refs).distinct.length)
     //}
 
-    def mappingFilterNGrama(query: String, file: File, unusedList: List[Any]): List[(File, (Seq[(String, Int)], String))] = {
-        val content = ProcessFiles.parseViquipediaFile(file.getPath).content
+    def mappingFilterNGrama(query: String, file: File, unusedList: List[Any]): List[(ViquipediaFile, (Seq[(String, Int)], String))] = {
+        val vf = ProcessFiles.parseViquipediaFile(file.getPath)
         val filteredQuery = DocumentSimilarity.filterWords(query)
+        val ngrama = DocumentSimilarity.ngrames(filteredQuery.length, vf.content, print = false, sort = false)
 
-        val ngrama = DocumentSimilarity.ngrames(filteredQuery.length, content, print = false)
-
-        List((file, (ngrama, filteredQuery.mkString(" "))))
+        List((vf, (ngrama, filteredQuery.mkString(" "))))
     }
 
-    def reduceFilterNGrama(file: File, ngrames: List[(Seq[(String, Int)], String)]): (File, Int) = {
-        (file, ngrames.head._1.count(_._1 == ngrames.head._2))
+    def reduceFilterNGrama(file: ViquipediaFile, ngrames: List[(Seq[(String, Int)], String)]): (ViquipediaFile, Int) = {
+        (file, ngrames.head._1.find(_._1 == ngrames.head._2) match {
+            case Some((_, value)) => value
+            case None => 0 //this should never happen but it's here for completeness
+        })
+    }
+
+    def mappingCalculatePR(file: ViquipediaFile, numberOfOccurrences: Int): (ViquipediaFile, Double) = {
+        val filteredRefsFile = ProcessFiles.filterViquipediaReferences(file)
+        (filteredRefsFile, PageRank.calculatePageRank(filteredRefsFile))
     }
 
 }
