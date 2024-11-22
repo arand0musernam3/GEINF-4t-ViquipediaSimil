@@ -1,4 +1,4 @@
-package mapreduce
+package segonaEntrega.mapreduce
 
 import akka.actor.{Actor, ActorRef, Props}
 

@@ -1,6 +1,7 @@
 package segonaEntrega
 import firstSubmission.DocumentSimilarity
-import tools.Timer
+import segonaEntrega.mapreduce.MappingReduceFunctions
+import tools.{MRWrapper, ProcessFiles, Timer}
 
 import scala.io.StdIn.readLine
 import scala.util.Try
@@ -25,6 +26,17 @@ object Main extends App {
     private def countAverageReferences(): Unit = {
         println("Counting the average number of references...")
         // You will enter the code for this
+        val result = Timer.timeMeasurement({
+            //TODO FIX THIS MESS
+            MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
+                MappingReduceFunctions.mappingCountReferences,
+                MappingReduceFunctions.reduceCountReferences)
+        })
+
+        //print(result)
+
+        val averageReferenceCount = if (result.size > 0) result.values.sum.toDouble / result.size else 0.0d
+        println(f"\n\nAverage number of unique references: $averageReferenceCount%.2f")
     }
 
     // Placeholder for reading and running a query from the keyboard
@@ -32,6 +44,14 @@ object Main extends App {
         println("Please enter your query:")
         val query = readLine()
         println(s"Running your code with query: $query")
+        //val result = Timer.timeMeasurement({
+        //    //TODO FIX THIS MESS
+        //    MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
+        //        MappingReduceFunctions.mappingQueryRecommendation(query, _, _),
+        //        MappingReduceFunctions.reduceCountReferences)
+        //})
+//
+        //print(result)
 
         //TODO
         //Timer.timeMeasurement()
@@ -77,7 +97,7 @@ object Main extends App {
                 Timer.timeMeasurement(testFunction())
 
             case "2" =>
-                Timer.timeMeasurement(countAverageReferences())
+                countAverageReferences()
 
             case "3" =>
                 readAndRunQuery()
@@ -97,4 +117,5 @@ object Main extends App {
 
     //TODO WRITE ACTOR CLOSING SEQUENCE
     shutdownActors()
+    System.exit(0)
 }
