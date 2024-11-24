@@ -22,7 +22,7 @@ object ProcessFiles {
         textString
     }
 
-    def getListOfFiles(dir: String):List[File] = {
+    def getListOfFiles(dir: String): List[File] = {
         val d = new File(dir)
         if (d.exists && d.isDirectory) {
             d.listFiles.filter(_.isFile).toList
@@ -31,14 +31,12 @@ object ProcessFiles {
         }
     }
 
-    def showTxtFilesFromDirectory(directori:String): Unit =
-    {
-        val txtFiles= for (f<-getListOfFiles(directori); name = f.getName if name.takeRight(3)=="txt")
+    def showTxtFilesFromDirectory(directori: String): Unit = {
+        val txtFiles = for (f <- getListOfFiles(directori); name = f.getName if name.takeRight(3) == "txt")
             yield name
-        for(f<-txtFiles)
-        {
+        for (f <- txtFiles) {
             println(f)
-            println(readFile(directori++"/"++f))
+            println(readFile(directori ++ "/" ++ f))
             println("--------------------------------------------------")
         }
     }
@@ -49,24 +47,36 @@ object ProcessFiles {
         // Agafo el document XML i ja està internament estructurat per anar accedint als camps que volguem
         val xmllegg: Elem = XML.load(xmlleg)
 
-        val title = (xmllegg \\ "title").text
-        val content = (xmllegg \\ "text").text
+        // obtinc el titol
+        val titol = (xmllegg \\ "title").text.toLowerCase()
 
-        val refRegex = new Regex("\\[\\[[^\\]]*\\]\\]")
+        // obtinc el contingut de la pàgina
+        val contingut = (xmllegg \\ "text").text.toLowerCase()
+
+        // identifico referències
+        val ref = new Regex("\\[\\[[^\\]]*\\]\\]")
         //println("La pagina es: " + titol)
         //println("i el contingut: ")
         //println(contingut)
-        val refs = (refRegex findAllIn content).toList //tot el que està entre [[ ]]
+        val refs = (ref findAllIn contingut).toList
+
+        val filteredRefs = refs.filterNot(_.contains(':'))
+            .map(_.replaceAll("\\[\\[|\\]\\]", ""))
+            .filterNot(_.startsWith("#"))
+            .map {
+                ref =>
+                    var res = ref
+                    if (res.contains('|'))
+                        res = res.split('|').head
+                    if (res.contains('#'))
+                        res = res.split('#').head
+
+                    res
+            }
+            .distinct
+            .filter(_ != titol)
 
         xmlleg.close()
-        ViquipediaFile(title, content, refs, new File(filename))
-    }
-
-    def filterViquipediaReferences(file: ViquipediaFile): ViquipediaFile = {
-        ViquipediaFile(file.title, file.content, filterViquipediaReferences(file.refs), file.file)
-    }
-
-    def filterViquipediaReferences(refs: List[String]): List[String] = {
-        refs.filterNot(_.contains(':'))
+        ViquipediaFile(titol, contingut, filteredRefs, new File(filename))
     }
 }
