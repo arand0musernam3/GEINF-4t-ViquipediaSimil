@@ -18,6 +18,8 @@ object MappingReduceFunctions {
         //refs.head because we know that there is only going to be one list.
     }
 
+
+
     def mappingFilterNGrama(query: String, file: File, unusedList: List[Any]): List[(ViquipediaFile, (Seq[(String, Int)], String))] = {
         val vf = ProcessFiles.parseViquipediaFile(file.getPath)
         val filteredQuery = DocumentSimilarity.filterWords(query)
@@ -33,6 +35,17 @@ object MappingReduceFunctions {
         })
     }
 
+    def mappingFilterContains(query: String, file: File, unusedList: List[Any]): List[(ViquipediaFile, Boolean)] = {
+        val vf = ProcessFiles.parseViquipediaFile(file.getPath)
+        val filteredQuery = DocumentSimilarity.filterWords(query)
+
+        List((vf, DocumentSimilarity.filterWords(vf.content).contains(query)))
+    }
+
+    def reduceFilterContains(file: ViquipediaFile, containsKeyword: List[Boolean]): (ViquipediaFile, Boolean) = {
+        (file, containsKeyword.forall(bool => bool))
+    }
+
     def mappingCalculatePR(filePR: (String, Double), refs: List[String]): List[(String, Double)] = {
         filePR match {
             case (str, pr) =>
@@ -45,6 +58,16 @@ object MappingReduceFunctions {
         (page, ((1 - brakeFactor) / totalNumberOfPages) + brakeFactor * weights.sum)
     }
 
+    def mappingObtainNonMutuallyRefDocuments(file: ViquipediaFile, refs: List[String]): List[((String, String), Boolean)] = {
+        refs.flatMap(ref => List(((file.title, ref), true), ((ref, file.title), false)))
+    }
 
+    def reduceObtainNonMutuallyRefDocuments(docs: (String, String), values: List[Boolean]): ((String, String), Boolean) = {
+        (docs, values.contains(true) && values.contains(false))
+    }
+
+    def mappingCalculateTF_IDF(docs: (String, String), unusedList: List[Any]): Unit = {
+
+    }
     //def mappingTwoPagesSimilarNonReferenced(file: ViquipediaFile, comparison: List[ViquipediaFile]) : ((ViquipediaFile, ViquipediaFile), Double)
 }

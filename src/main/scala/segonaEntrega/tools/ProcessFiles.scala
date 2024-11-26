@@ -79,4 +79,8 @@ object ProcessFiles {
         xmlleg.close()
         ViquipediaFile(titol, contingut, filteredRefs, new File(filename))
     }
+
+    def loadCatalanStopWords():Unit = {
+        //TODO
+    }
 }
