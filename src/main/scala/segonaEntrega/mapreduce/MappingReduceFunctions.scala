@@ -79,7 +79,7 @@ object MappingReduceFunctions {
     }
 
     def mappingCalculateInvDocFreq(content: String, unusedList: List[Any]): List[(String, Int)] = {
-        (for (word <- content.split(" ")) yield (word, 1)).toSet.toList
+        (for (word <- content.split(" ")) yield (word, 1)).distinct.toList
     }
 
     def reduceCalculateInvDocFreq(numberOfDocs: Int, word: String, counter: List[Int]): (String, Double) = {
@@ -101,7 +101,7 @@ object MappingReduceFunctions {
 
     def mappingSimilarity(pair: (ViquipediaFile, ViquipediaFile), tfIdfPerWord: List[((String, String), Double)])
     : List[((String, String), (List[(String, Double)], List[(String, Double)]))] = {
-        List((
+        /*List((
             (pair._1.title, pair._2.title), //docPair
             (
                 tfIdfPerWord.filter { case ((doc, _), _) => doc == pair._1.title }
@@ -109,7 +109,17 @@ object MappingReduceFunctions {
                 tfIdfPerWord.filter { case ((doc, _), _) => doc == pair._2.title }
                     .map { case ((_, word), tfidf) => (word, tfidf) }
             ) //listsOfTfIdsPerElement
-        ))
+        ))*/
+
+        val doc1TfIdf = tfIdfPerWord.collect {
+            case ((doc, word), tfidf) if doc == pair._1.title => (word, tfidf)
+        }
+
+        val doc2TfIdf = tfIdfPerWord.collect {
+            case ((doc, word), tfidf) if doc == pair._2.title => (word, tfidf)
+        }
+
+        List(((pair._1.title, pair._2.title), (doc1TfIdf, doc2TfIdf)))
     }
 
     def reduceSimilarity(docPair: (String, String), tfidfs: List[(List[(String, Double)], List[(String, Double)])]) = {

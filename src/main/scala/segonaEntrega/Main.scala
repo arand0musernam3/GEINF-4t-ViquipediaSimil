@@ -38,7 +38,7 @@ object Main extends App {
         println("Please enter your query:")
         val query = readLine().toLowerCase
         println()
-
+        /*
         var proves: List[(ProcessFiles.ViquipediaFile, Boolean)] = List()
         proves = proves.appended((ViquipediaFile(title = "B", content = "guerra enciam hola", refs = List("C", "A"), file = null), true))
         proves = proves.appended((ViquipediaFile(title = "C", content = "guerra tomata tomata", refs = List("A"), file = null), true))
@@ -47,6 +47,8 @@ object Main extends App {
         proves = proves.appended((ViquipediaFile(title = "E", content = "guerra pastanaga hola", refs = List("D"), file = null), true))
         proves = proves.appended((ViquipediaFile(title = "F", content = "guerra pastanaga hola", refs = List("E"), file = null), true))
         val filteredProves = proves.filter(_._2).map(_._1)
+
+        // TODO: modificar PR perquè retorni directament ViquipediaFile, no només l'string del títol
         val PRvalue = Timer.timeMeasurement({
             var aux = filteredProves
                 .map(vf => ((vf.title, 1.0d / proves.size), vf.refs))
@@ -69,9 +71,10 @@ object Main extends App {
             aux
         })
         println(PRvalue.map(_._1))
+        //TODO quan arreglat PR, també arreglar això
         similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map {case ((name, pr), refs) => ((proves.find(_._1.title == name).get._1, pr), refs)})
+        */
 
-        /*
         val occurrencesPerFile = Timer.timeMeasurement({
             //TODO FIX THIS MESS
             MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, List()),
@@ -118,10 +121,10 @@ object Main extends App {
             })
             println(PRvalue.map(_._1).sortBy(-_._2).take(4))
 
-            //similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100))
+            similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map {case ((name, pr), refs) => ((occurrencesPerFile.find(_._1.title == name).get._1, pr), refs)})
 
 
-        }*/
+        }
     }
 
     private def similarNonMutuallyReferencedDocuments(PRs: List[((ViquipediaFile, Double), List[String])]): Unit = {
@@ -144,9 +147,9 @@ object Main extends App {
         val allDocPairs = for {a <- allDocTitles; b <- allDocTitles if a < b} yield (a, b)
 
         val mutuallyReferencedDocPairs = areDocsReferenced.filter(_._2).map { case ((a, b), _) => if (a < b) (a, b) else (b, a) }.toSet
-        println(mutuallyReferencedDocPairs)
+        //println(mutuallyReferencedDocPairs)
         val nonMutuallyReferencedDocPairs = allDocPairs.diff(mutuallyReferencedDocPairs).toList
-        println(nonMutuallyReferencedDocPairs)
+        //println(nonMutuallyReferencedDocPairs)
 
         val nonMutuallyReferencedDocs: mutable.Set[ViquipediaFile] = mutable.Set()
         nonMutuallyReferencedDocPairs.foreach(pair => nonMutuallyReferencedDocs.addAll(
@@ -154,9 +157,7 @@ object Main extends App {
                 allDocs.find(_.title == pair._2).get))
         )
 
-        val numberOfDocuments = nonMutuallyReferencedDocs.size
-        println(s"Number of documents: $numberOfDocuments")
-
+        //tf
         val wordFreq = Timer.timeMeasurement({
             MRWrapper.MR(
                 nonMutuallyReferencedDocs.map(doc => (doc, Nil)).toList,
@@ -165,18 +166,16 @@ object Main extends App {
             )
         })
 
-        println(wordFreq)
-
+        //idf
         val documentInverseFreq = Timer.timeMeasurement({
             MRWrapper.MR(
                 nonMutuallyReferencedDocs.map(doc => (doc.content, Nil)).toList,
                 MappingReduceFunctions.mappingCalculateInvDocFreq,
-                MappingReduceFunctions.reduceCalculateInvDocFreq(numberOfDocuments, _, _)
+                MappingReduceFunctions.reduceCalculateInvDocFreq(nonMutuallyReferencedDocs.size, _, _)
             )
         })
 
-        println(documentInverseFreq)
-
+        //tf_idf
         val tfIdfPerWord = Timer.timeMeasurement({
             //fer map reduce per calcular tf_idf per document
             /*
@@ -201,8 +200,6 @@ object Main extends App {
                 MappingReduceFunctions.reduceTfIdfPerDoc
             )
         })
-
-        println(tfIdfPerWord)
 
         val similarityPairs = Timer.timeMeasurement({
             //fer map reduce per a calcular el nombre de similitud:

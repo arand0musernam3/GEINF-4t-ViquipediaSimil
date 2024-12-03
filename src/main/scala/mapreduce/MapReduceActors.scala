@@ -49,9 +49,9 @@ class MapReduce[K1,V1,K2,V2,V3](
 
 
     var nmappers: Int = mapperNumber
-    var mappersPendents = 0
+    var missatgesMappersPendents = 0
     var nreducers: Int = reducerNumber
-    var reducersPendents = 0
+    var missatgesReducersPendents = 0
 
     // dict serà el diccionari amb el resultat intermedi
     var dict: Map[K2, List[V2]] = Map[K2, List[V2]]() withDefaultValue List()
@@ -104,8 +104,8 @@ class MapReduce[K1,V1,K2,V2,V3](
             // Per tant, alternativament...
             // for(i<- 0 until nmappers) mappers(i) ! toMapper(input(i)._1, input(i)._2)
 
-            // Necessitem controlar quan s'han acabat tots els mappers per poder llençar els reducers després...
-            mappersPendents = nmappers
+            // Necessitem controlar quant s'han acabat tots els mappers per poder llençar els reducers després...
+            missatgesMappersPendents = input.length
 
         //println("All sent to Mappers, now start listening...")
 
@@ -118,15 +118,15 @@ class MapReduce[K1,V1,K2,V2,V3](
             for ((clau, valor) <- list_clau_valor)
                 dict += (clau -> (valor :: dict(clau)))
 
-            mappersPendents -= 1
+            missatgesMappersPendents -= 1
 
             // Quan ja hem rebut tots els missatges dels mappers:
-            if (mappersPendents==0)
+            if (missatgesMappersPendents==0)
             {
                 // creem els reducers, tants com entrades al diccionari; fixeu-vos de nou que fem servir context i fem el new
                 // pel constructor del Reducer amb paràmetres
                 // nreducers = dict.size NO LONGER REQUIRED
-                reducersPendents = nreducers // actualitzem els reducers pendents
+                missatgesReducersPendents = dict.size // actualitzem els reducers pendents
                 val reducers = for (i <- 0 until nreducers) yield
                     context.actorOf(Props(new Reducer(reducing)), "reducer"+i)
                 // No cal anotar els tipus ja que els infereix de la funció reducing
@@ -134,8 +134,13 @@ class MapReduce[K1,V1,K2,V2,V3](
 
                 // Ara enviem a cada reducer una clau de tipus V2 i una llista de valors de tipus K2. Les anotacions de tipus
                 // no caldrien perquè ja sabem de quin tipus és dict, però ens ajuden a documentar.
-                for (((key:K2, lvalue:List[V2]), i) <-  dict.zipWithIndex)
+                for (((key:K2, lvalue:List[V2]), i) <- dict.zipWithIndex)
                     reducers(i % nreducers) ! toReducer(key, lvalue)
+
+                // NO LONGER REQUIRED
+                //for ((i,(key:K2, lvalue:List[V2])) <-  (0 until nreducers) zip dict)
+                  //  reducers(i) ! toReducer(key, lvalue)
+
                 //println("All sent to Reducers")
             }
 
@@ -143,11 +148,11 @@ class MapReduce[K1,V1,K2,V2,V3](
         // descomptem reducers pendents. Tornem a necessitar anotar el tipus.
         case fromReducer(entradaDictionari:(K2,V3)) =>
             resultatFinal += entradaDictionari
-            reducersPendents -= 1
+            missatgesReducersPendents -= 1
 
 
             // En arribar a 0 enviem a qui ens ha encarregat el MapReduce el resultat. De fet l'està esperant pq haurà fet un ask.
-            if (reducersPendents == 0) {
+            if (missatgesReducersPendents == 0) {
                 client ! resultatFinal
                 //Println("All Done from Reducers!")
                 // Ara podem alliberar els recursos dels actors, el propi MapReduce, tots els mappers i els reducers.
