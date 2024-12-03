@@ -72,9 +72,9 @@ object ProcessFiles {
                         res = res.split('#').head
 
                     res
-            }
+            } /*
             .distinct
-            .filter(_ != titol)
+            .filter(_ != titol) */
 
         xmlleg.close()
         ViquipediaFile(titol, contingut, filteredRefs, new File(filename))

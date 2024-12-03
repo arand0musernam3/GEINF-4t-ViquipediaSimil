@@ -18,18 +18,6 @@ object Main extends App {
 
     }
 
-    // Placeholder for your test function
-    private def testFunction(): Unit = {
-        println("Running test function...")
-        val text = "Alguns exemples: [[Bombardeig de Guernica|Guernica]], [[Albert Einstein]], [[Fitxer:Imatge.jpg]], [[fitxer:Imatge.jpg]] [[#Secció]], [[Pàgina de prova]]"
-        val regex = """(?i)\[\[(?!Fitxer:)([^\|\#\]\[]+)(?=\|?|#|\]\])"""
-
-        val matches = regex.r.findAllIn(text).matchData.map(m => m.group(1)).toList
-
-        println(matches) // Output: List(Bombardeig de Guernica, Albert Einstein, Pàgina de prova)
-    }
-
-    // Placeholder for counting average references
     private def countAverageReferences(): Unit = {
         println("Counting the average number of references...")
         // You will enter the code for this
@@ -46,7 +34,6 @@ object Main extends App {
         println(f"\n\nAverage number of unique references: $averageReferenceCount%.2f")
     }
 
-    // Placeholder for reading and running a query from the keyboard
     private def recommendationBasedOnQuery(): Unit = {
         println("Please enter your query:")
         val query = readLine().toLowerCase
@@ -138,9 +125,12 @@ object Main extends App {
     }
 
     private def similarNonMutuallyReferencedDocuments(PRs: List[((ViquipediaFile, Double), List[String])]): Unit = {
+
+        // es veu que existeix un tipus de dades que és ListSet, que sembla que és perfecte pel que necessitem. Valorar-ho!
+
         import scala.collection.mutable //no sé si podem utilitzar això
         val input = PRs.map { case ((doc, _), refs) => (doc, refs) }
-        val allDocs = PRs.map(_._1._1)
+        val allDocs = PRs.map(_._1._1).toSet
         val allDocTitles = allDocs.map(_.title)
         val areDocsReferenced = Timer.timeMeasurement({
             MRWrapper.MR(input,
@@ -155,7 +145,7 @@ object Main extends App {
 
         val mutuallyReferencedDocPairs = areDocsReferenced.filter(_._2).map { case ((a, b), _) => if (a < b) (a, b) else (b, a) }.toSet
         println(mutuallyReferencedDocPairs)
-        val nonMutuallyReferencedDocPairs = allDocPairs.toSet.diff(mutuallyReferencedDocPairs).toList
+        val nonMutuallyReferencedDocPairs = allDocPairs.diff(mutuallyReferencedDocPairs).toList
         println(nonMutuallyReferencedDocPairs)
 
         val nonMutuallyReferencedDocs: mutable.Set[ViquipediaFile] = mutable.Set()
@@ -242,98 +232,40 @@ object Main extends App {
         })
 
         similarityPairs.toList.filter(_._2 >= 0.5).sortBy(-_._2).foreach(println(_))
-        //nonMutuallyReferencedDocPairs.foreach{ case (p1,p2) => println(s"${(p1,p2)}\t:${cosineSimTFIDF(p1, p2, )}")}
-
-        /*
-        Plantejament de tf_idf (TODO):
-            - per a cada document, obtenir totes les paraules que el formen (filtrant links i polles)
-            -
-         */
-
-
-        def cosineSimTFIDF(
-                              text1: String,
-                              text2: String,
-                              corpus: List[String],
-                              n: Int,
-                              stopWords: List[String] = List()
-                          ): Double = {
-
-            // Funció per calcular TF
-            def tf(text: String, stopWords: List[String]): Map[String, Int] = {
-                if (n == 1) nonstopfreq(text, stopWords, print = false).toMap
-                else ngrames(n, text, print = false).toMap
-            }
-
-            // Funció per calcular DF
-            def calculateDF(corpus: List[String], stopWords: List[String]): Map[String, Int] = {
-                corpus.flatMap(doc => tf(doc, stopWords).keySet)
-                    .groupBy(identity)
-                    .view.mapValues(_.size)
-                    .toMap
-            }
-
-            // Funció per calcular IDF
-            def calculateIDF(df: Map[String, Int], corpusSize: Int): Map[String, Double] = {
-                df.map { case (term, count) => term -> math.log(corpusSize.toDouble / count) }
-            }
-
-            // TF per text1 i text2
-            val tf1 = tf(text1, stopWords)
-            val tf2 = tf(text2, stopWords)
-
-            // Càlcul de DF a tot el corpus
-            val df = calculateDF(corpus, stopWords)
-
-            // IDF per tot el corpus
-            val idf = calculateIDF(df, corpus.size)
-
-            // Càlcul de TF-IDF per cada text
-            def tfidf(tf: Map[String, Int], idf: Map[String, Double]): Map[String, Double] = {
-                tf.map { case (term, freq) => term -> (freq * idf.getOrElse(term, 0.0)) }
-            }
-
-            val tfidf1 = tfidf(tf1, idf)
-            val tfidf2 = tfidf(tf2, idf)
-
-            // Generació del conjunt unificat de termes
-            val allTerms = (tfidf1.keySet ++ tfidf2.keySet).toList
-
-            // Creació de vectors TF-IDF alineats
-            val vector1 = allTerms.map(term => tfidf1.getOrElse(term, 0.0))
-            val vector2 = allTerms.map(term => tfidf2.getOrElse(term, 0.0))
-
-            // Càlcul del producte escalar i magnituds
-            val dotProduct = vector1.zip(vector2).map { case (a, b) => a * b }.sum
-            val magnitude1 = math.sqrt(vector1.map(a => a * a).sum)
-            val magnitude2 = math.sqrt(vector2.map(b => b * b).sum)
-
-            // Retornar la similitud del cosinus
-            if (magnitude1 == 0 || magnitude2 == 0) 0.0
-            else dotProduct / (magnitude1 * magnitude2)
-        }
     }
 
-    // Toggle number of actors
-    private def toggleNumberOfActors(): Unit = {
-        println("Enter the number of actors:")
+    private def toggleNumberOfMappers(): Unit = {
+        println(s"Enter the number of mappers (actual = $numMappers): ")
         val input = readLine()
         val newNumActors = Try(input.toInt).getOrElse(-1)
 
         if (newNumActors <= 0) {
             println("Invalid number of actors. Please enter a valid integer greater than 0.")
 
-        } else if (newNumActors != numActors) {
-            numActors = newNumActors
-            println(s"Number of actors set to $numActors.")
+        } else if (newNumActors != numMappers) {
+            numMappers = newNumActors
+            println(s"Number of mappers set to $numMappers.")
             //TODO enviar canvi de nombre d'actors i que s'espavili la classe que ho gestiona, pensar bé com fer-ho.
-        }
-        else {
-            println(s"Number of actors was already $numActors.")
         }
     }
 
-    private var numActors: Int = 1
+    private def toggleNumberOfReducers(): Unit = {
+        println(s"Enter the number of reducers (actual = $numReducers): ")
+        val input = readLine()
+        val newNumActors = Try(input.toInt).getOrElse(-1)
+
+        if (newNumActors <= 0) {
+            println("Invalid number of actors. Please enter a valid integer greater than 0.")
+
+        } else if (newNumActors != numReducers) {
+            numReducers = newNumActors
+            println(s"Number of reducers set to $numReducers.")
+            //TODO enviar canvi de nombre d'actors i que s'espavili la classe que ho gestiona, pensar bé com fer-ho.
+        }
+    }
+
+    private var numMappers: Int = 1
+    private var numReducers: Int = 1
     private var continue = true
 
     initializeActors()
@@ -342,8 +274,8 @@ object Main extends App {
         println("Select an option:")
         println("1. Count the average number of references of all documents")
         println("2. Recommendation based on query")
-        println("3. Similar documents non-mutually referenced based on query")
-        println("4. Toggle number of actors")
+        println(s"3. Toggle number of mappers ($numMappers)")
+        println(s"4. Toggle number of reducers ($numReducers)")
         println("5. Quit")
         print("Option: ")
 
@@ -357,10 +289,10 @@ object Main extends App {
                 recommendationBasedOnQuery()
 
             case "3" =>
-                println("TODO")
+                toggleNumberOfMappers()
 
             case "4" =>
-                toggleNumberOfActors()
+                toggleNumberOfReducers()
 
             case "5" =>
                 println("Exiting...")

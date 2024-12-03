@@ -16,10 +16,12 @@ object MRWrapper {
 
 
     def MR[K1, V1, K2, V2, V3](input: List[(K1, List[V1])],
-                               mappingFunction: (K1,List[V1]) => List[(K2,V2)],
-                               reducingFunction: (K2,List[V2])=> (K2,V3)): Map[K2, V3] = {
+                                mappingFunction: (K1,List[V1]) => List[(K2,V2)],
+                                reducingFunction: (K2,List[V2])=> (K2,V3),
+                                mapperNumber: Int = 1,
+                                reducerNumber: Int = 1) : Map[K2, V3] = {
         val system = ActorSystem("MapReduceSystem")
-        val orchestrator = system.actorOf(Props(new MapReduce(input, mappingFunction, reducingFunction)), "orchestrator")
+        val orchestrator = system.actorOf(Props(new MapReduce(input, mappingFunction, reducingFunction, mapperNumber, reducerNumber)), "orchestrator")
 
         implicit val timeout: Timeout = Timeout(timeoutValue)
         val futureResult = (orchestrator ? MapReduceCompute()).mapTo[Map[K2, V3]]
