@@ -40,7 +40,7 @@ object Main extends App {
 
     private def recommendationBasedOnQuery(): Unit = {
         println("Please enter your query:")
-        val query = readLine().toLowerCase
+        val query = readLine().toLowerCase.trim
         println()
 /*
         var proves: List[(ProcessFiles.ViquipediaFile, Boolean)] = List()
@@ -104,11 +104,13 @@ object Main extends App {
 
         val filteredFiles = occurrencesPerFile.filter(_._2).toList.map(_._1)
 
+        println(filteredFiles)
+
         if (filteredFiles.isEmpty) {
             println("Query was not found in any of the documents.")
         }
         else if (filteredFiles.size == 1) {
-            println(s"Only one document matches this query: ${occurrencesPerFile.head._1.title}")
+            println(s"Only one document matches this query: ${filteredFiles.head.title}")
         }
         else {
             val PRvalue = Timer.timeMeasurement({
@@ -136,7 +138,7 @@ object Main extends App {
 
                 aux
             })
-            println(PRvalue.map(_._1).sortBy(-_._2).take(4))
+            println(PRvalue.map(_._1).sortBy(-_._2))
 
             similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map {case ((name, pr), refs) => ((occurrencesPerFile.find(_._1.title == name).get._1, pr), refs)})
         }
@@ -185,6 +187,7 @@ object Main extends App {
             )
         }
 
+
         // Calculate inverse document frequency (IDF)
         val documentInverseFreq = Timer.timeMeasurement {
             MRWrapper.MR(
@@ -193,6 +196,7 @@ object Main extends App {
                 MappingReduceFunctions.reduceCalculateInvDocFreq(nonMutuallyReferencedDocs.size, _, _)
             )
         }
+
 
         // Calculate TF-IDF
         val tfIdfPerWord = Timer.timeMeasurement {
@@ -204,6 +208,7 @@ object Main extends App {
                 MappingReduceFunctions.reduceTfIdfPerDoc
             )
         }
+
 
         // Calculate cosine similarity between document pairs
         val similarityPairs = Timer.timeMeasurement {
@@ -222,7 +227,7 @@ object Main extends App {
           .filter(_._2 >= 0.5)
           .toList
           .sortBy(-_._2)
-          .foreach(println(_))
+          .foreach(println)
     }
 
     private def toggleNumberOfMappers(): Unit = {

@@ -2,6 +2,7 @@ package segonaEntrega.tools
 
 import mapreduce.ViquipediaParse.ResultViquipediaParsing
 import org.apache.commons.io.{FileUtils, IOUtils}
+import segonaEntrega.firstSubmission.DocumentSimilarity
 
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -69,17 +70,13 @@ object ProcessFiles {
             val wikiRegex = "\\[\\[(.*?)\\]\\]".r
             val templateRegex = "\\{\\{(.*?)\\}\\}".r
 
-            val cleanedContent = wikiRegex.replaceAllIn(contingut, m => {
-                val innerText = m.group(1)
-                val parts = innerText.split("[|#]").map(_.trim)
-                parts.lastOption.getOrElse("")
-            })
+            var cleanedContent = wikiRegex.replaceAllIn(contingut, _ => "")
 
-            templateRegex.replaceAllIn(cleanedContent, m => {
-                val innerText = m.group(1)
-                val parts = innerText.split("[|#]").map(_.trim)
-                parts.lastOption.getOrElse("")
-            })
+            cleanedContent = templateRegex.replaceAllIn(cleanedContent, _ => "")
+
+            cleanedContent.split("\\s+").filterNot(catalanStopwords.contains).mkString(" ")
+
+            DocumentSimilarity.filterWords(cleanedContent).mkString(" ")
 
         } else {
             contingut
@@ -130,12 +127,13 @@ object ProcessFiles {
             cleanedContent = templateRegex.replaceAllIn(cleanedContent, _ => "")
 
             cleanedContent.split("\\s+").filterNot(catalanStopwords.contains).mkString(" ")
+
         } else {
             contingut
         }
 
         xmlleg.close()
-        ViquipediaFile(titol, filteredContingut, filteredRefs, new File(filename))
+        ViquipediaFile(titol, contingut, filteredRefs, new File(filename))
     }
 
     private def loadCatalanStopWords() = {

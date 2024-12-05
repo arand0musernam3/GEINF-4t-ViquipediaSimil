@@ -26,10 +26,12 @@ object MappingReduceFunctions {
     }
 
     def mappingFilterContains(query: String, file: File, unusedList: List[Any]): List[(ViquipediaFile, Boolean)] = {
-        val vf = ProcessFiles.parseViquipediaFile(file.getPath, processContent = true)
+        val vf = ProcessFiles.parseViquipediaFile(file.getPath)
         val filteredQuery = DocumentSimilarity.filterWords(query)
+        val aux = DocumentSimilarity.filterWords(vf.content)
         // TODO IMPROVE THIS
-        List((vf, DocumentSimilarity.filterWords(vf.content).mkString(" ").contains(filteredQuery.mkString(" "))))
+        // TODO FER EL FILTRATGE DE LES REFERÈNCIES MÉS TARD, JA QUE SI NO ET PETES DOCUMENTS QUE CONTENEN LA PARAULA A LA PRÒPIA REFERÈNCIA
+        List((vf, filteredQuery.forall(aux.contains(_))))
     }
 
     def reduceFilterContains(file: ViquipediaFile, containsKeyword: List[Boolean]): (ViquipediaFile, Boolean) = {
@@ -49,7 +51,10 @@ object MappingReduceFunctions {
     }
 
     def mappingObtainNonMutuallyRefDocuments(file: ViquipediaFile, refs: List[String]): List[((String, String), Boolean)] = {
-        refs.flatMap(ref => List(((file.title, ref), true), ((ref, file.title), false)))
+        if (refs.isEmpty)
+            List(((file.title, ""), false))
+        else
+            refs.flatMap(ref => List(((file.title, ref), true), ((ref, file.title), false)))
     }
 
     def reduceObtainNonMutuallyRefDocuments(docs: (String, String), values: List[Boolean]): ((String, String), Boolean) = {
@@ -70,12 +75,12 @@ object MappingReduceFunctions {
     }
 
     def mappingCalculateInvDocFreq(content: String, unusedList: List[Any]): List[(String, Int)] = {
-        (for (word <- content.split(" ")) yield (word, 1)).distinct.toList
+        (for (word <- DocumentSimilarity.filterWords(content)) yield (word, 1)).distinct.toList
     }
 
     def reduceCalculateInvDocFreq(numberOfDocs: Int, word: String, counter: List[Int]): (String, Double) = {
         val sum = counter.sum
-        (word, Math.log(numberOfDocs.toDouble / sum))
+        (word, Math.log10(numberOfDocs.toDouble / sum))
     }
 
     def mappingTfIdfPerDoc(inverseFreqs: Map[String, Double], wordCountPerDoc: ((String, String), Int), unusedList: List[Any]) = {
