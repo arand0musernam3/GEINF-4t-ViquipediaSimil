@@ -8,6 +8,14 @@ import tools.{MRWrapper, ProcessFiles, Timer}
 import scala.io.StdIn.readLine
 import scala.util.Try
 
+/*
+    TODO:
+     - Fer el document per Typst
+     - Preguntar tema de les referències a en Mateu (del [[ | ]])
+     - Fer script de 1, 4, 10 i 20 actors
+     - Ampliar a més de 100 pàgines.
+ */
+
 object Main extends App {
 
     private def shutdownActors(): Unit = {
@@ -195,7 +203,7 @@ object Main extends App {
                 MappingReduceFunctions.mappingTfIdfPerDoc(documentInverseFreq,_,_),
                 MappingReduceFunctions.reduceTfIdfPerDoc
             )
-        }.toList
+        }
 
         // Calculate cosine similarity between document pairs
         val similarityPairs = Timer.timeMeasurement {
@@ -203,9 +211,9 @@ object Main extends App {
                 nonMutuallyReferencedDocPairs.map { case (doc1Title, doc2Title) =>
                     val doc1 = nonMutuallyReferencedDocs.find(_.title == doc1Title).get
                     val doc2 = nonMutuallyReferencedDocs.find(_.title == doc2Title).get
-                    ((doc1, doc2), tfIdfPerWord)
+                    ((doc1, doc2), Nil)
                 },
-                MappingReduceFunctions.mappingSimilarity,
+                MappingReduceFunctions.mappingSimilarity(tfIdfPerWord,_,_),
                 MappingReduceFunctions.reduceSimilarity
             )
         }

@@ -90,8 +90,8 @@ object MappingReduceFunctions {
         (docWord, tfIdf.head)
     }
 
-    def mappingSimilarity(pair: (ViquipediaFile, ViquipediaFile), tfIdfPerWord: List[((String, String), Double)])
-    : List[((String, String), (List[(String, Double)], List[(String, Double)]))] = {
+    def mappingSimilarity(tfIdfPerWord: Map[(String, String), Double], pair: (ViquipediaFile, ViquipediaFile), unusedList: List[Any]) = {
+
         val doc1TfIdf = tfIdfPerWord.collect {
             case ((doc, word), tfidf) if doc == pair._1.title => (word, tfidf)
         }
@@ -103,11 +103,11 @@ object MappingReduceFunctions {
         List(((pair._1.title, pair._2.title), (doc1TfIdf, doc2TfIdf)))
     }
 
-    def reduceSimilarity(docPair: (String, String), tfidfs: List[(List[(String, Double)], List[(String, Double)])]) = {
+    def reduceSimilarity(docPair: (String, String), tfidfs: List[(Map[String, Double], Map[String, Double])]) = {
         val doc1 = docPair._1
         val doc2 = docPair._2
-        val tfidf1 = tfidfs.head._1.toMap
-        val tfidf2 = tfidfs.head._2.toMap
+        val tfidf1 = tfidfs.head._1
+        val tfidf2 = tfidfs.head._2
 
         // Generació del conjunt unificat de termes
         val allTerms = (tfidf1.keySet ++ tfidf2.keySet).toList
@@ -123,9 +123,9 @@ object MappingReduceFunctions {
 
         // Retornar la similitud del cosinus
         val similarity = if (magnitude1 == 0 || magnitude2 == 0)
-                0.0
-            else
-                dotProduct / (magnitude1 * magnitude2)
+            0.0
+        else
+            dotProduct / (magnitude1 * magnitude2)
 
         ((doc1, doc2), similarity)
     }
