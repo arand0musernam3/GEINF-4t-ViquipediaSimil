@@ -18,27 +18,18 @@ object MappingReduceFunctions {
         //refs.head because we know that there is only going to be one list.
     }
 
-
-    def mappingFilterNGrama(query: String, file: File, unusedList: List[Any]): List[(ViquipediaFile, (Seq[(String, Int)], String))] = {
-        val vf = ProcessFiles.parseViquipediaFile(file.getPath)
+    def testMapping(query: String, file: ViquipediaFile, unusedList: List[Any]): List[(ViquipediaFile, Boolean)] = {
+        val vf = ProcessFiles.aux(file)
         val filteredQuery = DocumentSimilarity.filterWords(query)
-        val ngrama = DocumentSimilarity.ngrames(filteredQuery.length, vf.content, print = false, sort = false)
 
-        List((vf, (ngrama, filteredQuery.mkString(" "))))
-    }
-
-    def reduceFilterNGrama(file: ViquipediaFile, ngrames: List[(Seq[(String, Int)], String)]): (ViquipediaFile, Int) = {
-        (file, ngrames.head._1.find(_._1 == ngrames.head._2) match {
-            case Some((_, value)) => value
-            case None => 0
-        })
+        List((vf, DocumentSimilarity.filterWords(vf.content).sliding(size = filteredQuery.length).contains(filteredQuery)))
     }
 
     def mappingFilterContains(query: String, file: File, unusedList: List[Any]): List[(ViquipediaFile, Boolean)] = {
-        val vf = ProcessFiles.parseViquipediaFile(file.getPath)
+        val vf = ProcessFiles.parseViquipediaFile(file.getPath, processContent = true)
         val filteredQuery = DocumentSimilarity.filterWords(query)
-
-        List((vf, DocumentSimilarity.filterWords(vf.content).contains(query)))
+        // TODO IMPROVE THIS
+        List((vf, DocumentSimilarity.filterWords(vf.content).mkString(" ").contains(filteredQuery.mkString(" "))))
     }
 
     def reduceFilterContains(file: ViquipediaFile, containsKeyword: List[Boolean]): (ViquipediaFile, Boolean) = {
@@ -87,10 +78,10 @@ object MappingReduceFunctions {
         (word, Math.log(numberOfDocs.toDouble / sum))
     }
 
-    def mappingTfIdfPerDoc(wordCountPerDoc: ((String, String), Int), inverseFreqs: List[(String, Double)]) = {
+    def mappingTfIdfPerDoc(inverseFreqs: Map[String, Double], wordCountPerDoc: ((String, String), Int), unusedList: List[Any]) = {
         wordCountPerDoc match {
             case ((doc, word), freq) =>
-                List(((doc, word), freq * inverseFreqs.toMap.getOrElse(word, 0d)))
+                List(((doc, word), freq * inverseFreqs.getOrElse(word, 0d)))
         }
     }
 
@@ -101,16 +92,6 @@ object MappingReduceFunctions {
 
     def mappingSimilarity(pair: (ViquipediaFile, ViquipediaFile), tfIdfPerWord: List[((String, String), Double)])
     : List[((String, String), (List[(String, Double)], List[(String, Double)]))] = {
-        /*List((
-            (pair._1.title, pair._2.title), //docPair
-            (
-                tfIdfPerWord.filter { case ((doc, _), _) => doc == pair._1.title }
-                    .map { case ((_, word), tfidf) => (word, tfidf) },
-                tfIdfPerWord.filter { case ((doc, _), _) => doc == pair._2.title }
-                    .map { case ((_, word), tfidf) => (word, tfidf) }
-            ) //listsOfTfIdsPerElement
-        ))*/
-
         val doc1TfIdf = tfIdfPerWord.collect {
             case ((doc, word), tfidf) if doc == pair._1.title => (word, tfidf)
         }

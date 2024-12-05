@@ -1,6 +1,6 @@
 package segonaEntrega
 
-import segonaEntrega.firstSubmission.DocumentSimilarity.{ngrames, nonstopfreq}
+import pda.practica.DocumentSimilarity
 import segonaEntrega.mapreduce.MappingReduceFunctions
 import segonaEntrega.tools.ProcessFiles.ViquipediaFile
 import tools.{MRWrapper, ProcessFiles, Timer}
@@ -10,12 +10,8 @@ import scala.util.Try
 
 object Main extends App {
 
-    private def initializeActors(): Unit = {
-
-    }
-
     private def shutdownActors(): Unit = {
-
+        MRWrapper.stopSystem()
     }
 
     private def countAverageReferences(): Unit = {
@@ -38,15 +34,30 @@ object Main extends App {
         println("Please enter your query:")
         val query = readLine().toLowerCase
         println()
-        /*
+/*
         var proves: List[(ProcessFiles.ViquipediaFile, Boolean)] = List()
-        proves = proves.appended((ViquipediaFile(title = "B", content = "guerra enciam hola", refs = List("C", "A"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "C", content = "guerra tomata tomata", refs = List("A"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "D", content = "guerra pa", refs = List("A", "B", "C", "E"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "A", content = "guerra enciam tomata pa hola", refs = List(), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "E", content = "guerra pastanaga hola", refs = List("D"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "F", content = "guerra pastanaga hola", refs = List("E"), file = null), true))
-        val filteredProves = proves.filter(_._2).map(_._1)
+        //proves = proves.appended((ViquipediaFile(title = "B", content = "guerra enciam hola", refs = List("C", "A"), file = null), true))
+        //proves = proves.appended((ViquipediaFile(title = "C", content = "guerra tomata tomata", refs = List("A"), file = null), true))
+        //proves = proves.appended((ViquipediaFile(title = "D", content = "guerra pa", refs = List("A", "B", "C", "E"), file = null), true))
+        //proves = proves.appended((ViquipediaFile(title = "A", content = "guerra enciam tomata pa hola", refs = List(), file = null), true))
+        //proves = proves.appended((ViquipediaFile(title = "E", content = "guerra pastanaga hola", refs = List("D"), file = null), true))
+        //proves = proves.appended((ViquipediaFile(title = "F", content = "guerra pastanaga hola", refs = List("E"), file = null), true))
+        //proves = proves.appended((ViquipediaFile(title = "G", content = "guerra enciam", refs = List("D"), file = null), true))
+
+        proves = proves.appended((ViquipediaFile(title = "B", content = "guerra [[enciam]] hola", refs = List("C", "A"), file = null), true))
+        proves = proves.appended((ViquipediaFile(title = "A", content = "guerra enciam [[hola | aixo es text]]", refs = List("C", "A"), file = null), true))
+        proves = proves.appended((ViquipediaFile(title = "Q", content = "guerra enciam [[#pollon]]", refs = List("C", "A"), file = null), true))
+        proves = proves.appended((ViquipediaFile(title = "Z", content = "guerra enciam [[hola | aixo | es text]] [[polla#gorda]]", refs = List("C", "A"), file = null), true))
+        proves = proves.appended((ViquipediaFile(title = "C", content = "[[Fitxer:Democracy claims.svg|right|350px|thumb|Des de la [[Segona Guerra Mundial]], la democràcia ha guanyat una àmplia acceptació. Aquest mapa mostra l'auto-identificació oficial feta per governs de tot el món en relació a la democràcia, el 2012. Mostra l'estatus legal de la democràcia en el món. {{legend|green|Governs que s'identifiquen com a democràtics}} {{legend|red|Governs que no s'identifiquen com a democràtics: [[Ciutat del Vaticà]], [[Oman]], [[Aràbia Saudita]], [[Emirats Àrabs Units]], [[Brunei]] i [[Fiji]].}}]]", refs = List("C", "A"), file = null), true))
+
+        val occurrencesPerFile = Timer.timeMeasurement({
+            //TODO FIX THIS MESS
+            MRWrapper.MR(proves.map{ case (file, _) => (file, Nil)},
+                MappingReduceFunctions.testMapping(query,_,_),
+                MappingReduceFunctions.reduceFilterContains)
+        })
+
+        val filteredProves = occurrencesPerFile.filter(_._2).toList.map(_._1)
 
         // TODO: modificar PR perquè retorni directament ViquipediaFile, no només l'string del títol
         val PRvalue = Timer.timeMeasurement({
@@ -73,7 +84,7 @@ object Main extends App {
         println(PRvalue.map(_._1))
         //TODO quan arreglat PR, també arreglar això
         similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map {case ((name, pr), refs) => ((proves.find(_._1.title == name).get._1, pr), refs)})
-        */
+*/
 
         val occurrencesPerFile = Timer.timeMeasurement({
             //TODO FIX THIS MESS
@@ -84,8 +95,6 @@ object Main extends App {
 
 
         val filteredFiles = occurrencesPerFile.filter(_._2).toList.map(_._1)
-
-        //filteredFiles.foreach(println(_))
 
         if (filteredFiles.isEmpty) {
             println("Query was not found in any of the documents.")
@@ -122,113 +131,90 @@ object Main extends App {
             println(PRvalue.map(_._1).sortBy(-_._2).take(4))
 
             similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map {case ((name, pr), refs) => ((occurrencesPerFile.find(_._1.title == name).get._1, pr), refs)})
-
-
         }
     }
 
     private def similarNonMutuallyReferencedDocuments(PRs: List[((ViquipediaFile, Double), List[String])]): Unit = {
 
-        // es veu que existeix un tipus de dades que és ListSet, que sembla que és perfecte pel que necessitem. Valorar-ho!
-
-        import scala.collection.mutable //no sé si podem utilitzar això
         val input = PRs.map { case ((doc, _), refs) => (doc, refs) }
-        val allDocs = PRs.map(_._1._1).toSet
+        val allDocs = PRs.map(_._1._1)
         val allDocTitles = allDocs.map(_.title)
-        val areDocsReferenced = Timer.timeMeasurement({
-            MRWrapper.MR(input,
+
+        // Calculate mutually referenced document pairs
+        val mutuallyReferencedDocPairs = Timer.timeMeasurement {
+            val areDocsReferenced = MRWrapper.MR(
+                input,
                 MappingReduceFunctions.mappingObtainNonMutuallyRefDocuments,
                 MappingReduceFunctions.reduceObtainNonMutuallyRefDocuments
             )
-        })
+            areDocsReferenced
+              .filter(_._2) // Keep only mutually referenced pairs
+              .map { case ((a, b), _) => if (a < b) (a, b) else (b, a) }
+              .toSet
+        }
 
-        //òptimament això de allDocPairs es podria fer amb un actor mentre els altres actors fan lu altre, podríem mirar
-        //d'aprofitar els futures d'alguna forma, això ja optimitzacions per a versió final
-        val allDocPairs = for {a <- allDocTitles; b <- allDocTitles if a < b} yield (a, b)
+        // Generate all possible document pairs and filter out mutually referenced pairs
+        val nonMutuallyReferencedDocPairs = {
+            val allDocPairs = for { a <- allDocTitles; b <- allDocTitles if a < b } yield (a, b)
+            allDocPairs.toSet.diff(mutuallyReferencedDocPairs).toList
+        }
 
-        val mutuallyReferencedDocPairs = areDocsReferenced.filter(_._2).map { case ((a, b), _) => if (a < b) (a, b) else (b, a) }.toSet
-        //println(mutuallyReferencedDocPairs)
-        val nonMutuallyReferencedDocPairs = allDocPairs.diff(mutuallyReferencedDocPairs).toList
-        //println(nonMutuallyReferencedDocPairs)
+        // Extract unique documents from non-mutually referenced pairs
+        val nonMutuallyReferencedDocs = Set(nonMutuallyReferencedDocPairs.flatMap {
+            case (doc1Title, doc2Title) =>
+                Seq(
+                    allDocs.find(_.title == doc1Title).get,
+                    allDocs.find(_.title == doc2Title).get
+                )
+        }: _*)
 
-        val nonMutuallyReferencedDocs: mutable.Set[ViquipediaFile] = mutable.Set()
-        nonMutuallyReferencedDocPairs.foreach(pair => nonMutuallyReferencedDocs.addAll(
-            Seq(allDocs.find(_.title == pair._1).get,
-                allDocs.find(_.title == pair._2).get))
-        )
-
-        //tf
-        val wordFreq = Timer.timeMeasurement({
+        // Calculate word frequency (TF)
+        val wordFreq = Timer.timeMeasurement {
             MRWrapper.MR(
-                nonMutuallyReferencedDocs.map(doc => (doc, Nil)).toList,
+                nonMutuallyReferencedDocs.toList.map(doc => (doc, Nil)),
                 MappingReduceFunctions.mappingCalculateWordFreq,
                 MappingReduceFunctions.reduceCalculateWordFreq
             )
-        })
+        }
 
-        //idf
-        val documentInverseFreq = Timer.timeMeasurement({
+        // Calculate inverse document frequency (IDF)
+        val documentInverseFreq = Timer.timeMeasurement {
             MRWrapper.MR(
-                nonMutuallyReferencedDocs.map(doc => (doc.content, Nil)).toList,
+                nonMutuallyReferencedDocs.toList.map(doc => (doc.content, Nil)),
                 MappingReduceFunctions.mappingCalculateInvDocFreq,
                 MappingReduceFunctions.reduceCalculateInvDocFreq(nonMutuallyReferencedDocs.size, _, _)
             )
-        })
+        }
 
-        //tf_idf
-        val tfIdfPerWord = Timer.timeMeasurement({
-            //fer map reduce per calcular tf_idf per document
-            /*
-            // TF per text1 i text2
-            val tf1 = tf(text1, stopWords)
-            val tf2 = tf(text2, stopWords)
-
-            // Càlcul de DF a tot el corpus
-            val df = calculateDF(corpus, stopWords)
-
-            // IDF per tot el corpus
-            val idf = calculateIDF(df, corpus.size)
-
-            // Càlcul de TF-IDF per cada text
-            def tfidf(tf: Map[String, Int], idf: Map[String, Double]): Map[String, Double] = {
-                tf.map { case (term, freq) => term -> (freq * idf.getOrElse(term, 0.0)) }
-            }
-             */
+        // Calculate TF-IDF
+        val tfIdfPerWord = Timer.timeMeasurement {
             MRWrapper.MR(
-                wordFreq.map{ case ((doc, word), freq) => (((doc, word), freq), documentInverseFreq.toList)}.toList,
-                MappingReduceFunctions.mappingTfIdfPerDoc,
+                wordFreq.map { case ((doc, word), freq) =>
+                    (((doc, word), freq), Nil)
+                }.toList,
+                MappingReduceFunctions.mappingTfIdfPerDoc(documentInverseFreq,_,_),
                 MappingReduceFunctions.reduceTfIdfPerDoc
             )
-        })
+        }.toList
 
-        val similarityPairs = Timer.timeMeasurement({
-            //fer map reduce per a calcular el nombre de similitud:
-            /*
-            // Creació de vectors TF-IDF alineats
-            val vector1 = allTerms.map(term => tfidf1.getOrElse(term, 0.0))
-            val vector2 = allTerms.map(term => tfidf2.getOrElse(term, 0.0))
-
-            // Càlcul del producte escalar i magnituds
-            val dotProduct = vector1.zip(vector2).map { case (a, b) => a * b }.sum
-            val magnitude1 = math.sqrt(vector1.map(a => a * a).sum)
-            val magnitude2 = math.sqrt(vector2.map(b => b * b).sum)
-
-            // Retornar la similitud del cosinus
-            if (magnitude1 == 0 || magnitude2 == 0) 0.0
-            else dotProduct / (magnitude1 * magnitude2)
-             */
+        // Calculate cosine similarity between document pairs
+        val similarityPairs = Timer.timeMeasurement {
             MRWrapper.MR(
-                nonMutuallyReferencedDocPairs.map{ case (doc1, doc2) =>
-                    ((nonMutuallyReferencedDocs.filter(_.title == doc1).head,
-                        nonMutuallyReferencedDocs.filter(_.title == doc2).head),
-                    tfIdfPerWord.toList)
+                nonMutuallyReferencedDocPairs.map { case (doc1Title, doc2Title) =>
+                    val doc1 = nonMutuallyReferencedDocs.find(_.title == doc1Title).get
+                    val doc2 = nonMutuallyReferencedDocs.find(_.title == doc2Title).get
+                    ((doc1, doc2), tfIdfPerWord)
                 },
                 MappingReduceFunctions.mappingSimilarity,
                 MappingReduceFunctions.reduceSimilarity
             )
-        })
+        }
 
-        similarityPairs.toList.filter(_._2 >= 0.5).sortBy(-_._2).foreach(println(_))
+        similarityPairs
+          .filter(_._2 >= 0.5)
+          .toList
+          .sortBy(-_._2)
+          .foreach(println(_))
     }
 
     private def toggleNumberOfMappers(): Unit = {
@@ -264,8 +250,6 @@ object Main extends App {
     private var numMappers: Int = 1
     private var numReducers: Int = 1
     private var continue = true
-
-    initializeActors()
 
     while (continue) {
         println("Select an option:")

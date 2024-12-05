@@ -7,6 +7,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import scala.util.matching.Regex
 import scala.xml.{Elem, XML}
+import scala.io.Source
 
 object ProcessFiles {
 
@@ -41,7 +42,55 @@ object ProcessFiles {
         }
     }
 
-    def parseViquipediaFile(filename: String): ViquipediaFile = {
+    def aux(file: ViquipediaFile): ViquipediaFile = {
+        val titol = file.title
+        val contingut = file.content
+
+        // identifico referències
+        val ref = new Regex("\\[\\[[^\\]]*\\]\\]")
+        val refs = (ref findAllIn contingut).toList
+
+        val filteredRefs = refs.filterNot(_.contains(':'))
+          .map(_.replaceAll("\\[\\[|\\]\\]", ""))
+          .filterNot(_.startsWith("#"))
+          .map {
+              ref =>
+                  var res = ref
+                  if (res.contains('|'))
+                      res = res.split('|').head
+                  if (res.contains('#'))
+                      res = res.split('#').head
+
+                  res
+          }
+
+        val filteredContingut = if (true) {
+
+            val wikiRegex = "\\[\\[(.*?)\\]\\]".r
+            val templateRegex = "\\{\\{(.*?)\\}\\}".r
+
+            val cleanedContent = wikiRegex.replaceAllIn(contingut, m => {
+                val innerText = m.group(1)
+                val parts = innerText.split("[|#]").map(_.trim)
+                parts.lastOption.getOrElse("")
+            })
+
+            templateRegex.replaceAllIn(cleanedContent, m => {
+                val innerText = m.group(1)
+                val parts = innerText.split("[|#]").map(_.trim)
+                parts.lastOption.getOrElse("")
+            })
+
+        } else {
+            contingut
+        }
+
+        println(filteredContingut)
+
+        ViquipediaFile(titol, filteredContingut, filteredRefs, null)
+    }
+
+    def parseViquipediaFile(filename: String, processContent: Boolean = false): ViquipediaFile = {
         val xmlleg = new java.io.InputStreamReader(new java.io.FileInputStream(filename), "UTF-8")
 
         // Agafo el document XML i ja està internament estructurat per anar accedint als camps que volguem
@@ -55,9 +104,6 @@ object ProcessFiles {
 
         // identifico referències
         val ref = new Regex("\\[\\[[^\\]]*\\]\\]")
-        //println("La pagina es: " + titol)
-        //println("i el contingut: ")
-        //println(contingut)
         val refs = (ref findAllIn contingut).toList
 
         val filteredRefs = refs.filterNot(_.contains(':'))
@@ -72,15 +118,29 @@ object ProcessFiles {
                         res = res.split('#').head
 
                     res
-            } /*
-            .distinct
-            .filter(_ != titol) */
+            }
+
+        val filteredContingut = if (processContent) {
+
+            val wikiRegex = "\\[\\[(.*?)\\]\\]".r
+            val templateRegex = "\\{\\{(.*?)\\}\\}".r
+
+            var cleanedContent = wikiRegex.replaceAllIn(contingut, _ => "")
+
+            cleanedContent = templateRegex.replaceAllIn(cleanedContent, _ => "")
+
+            cleanedContent.split("\\s+").filterNot(catalanStopwords.contains).mkString(" ")
+        } else {
+            contingut
+        }
 
         xmlleg.close()
-        ViquipediaFile(titol, contingut, filteredRefs, new File(filename))
+        ViquipediaFile(titol, filteredContingut, filteredRefs, new File(filename))
     }
 
-    def loadCatalanStopWords():Unit = {
-        //TODO
+    private def loadCatalanStopWords() = {
+        Source.fromFile("stopwordscatalanet.txt", StandardCharsets.UTF_8.name).mkString.split("\\s+").filter(_.nonEmpty).toSet
     }
+
+    private val catalanStopwords: Set[String] = loadCatalanStopWords()
 }
