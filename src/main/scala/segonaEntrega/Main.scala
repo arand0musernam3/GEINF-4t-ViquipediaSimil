@@ -138,9 +138,10 @@ object Main extends App {
 
                 aux
             })
-            println(PRvalue.map(_._1).sortBy(-_._2))
+            println(PRvalue.map(_._1).sortBy(-_._2).take(4))
 
-            similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map {case ((name, pr), refs) => ((occurrencesPerFile.find(_._1.title == name).get._1, pr), refs)})
+            similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(nonMutuallyReferenced)
+                .map {case ((name, pr), refs) => ((occurrencesPerFile.find(_._1.title == name).get._1, pr), refs)})
         }
     }
 
@@ -262,6 +263,7 @@ object Main extends App {
 
     private var numMappers: Int = 1
     private var numReducers: Int = 1
+    private var nonMutuallyReferenced: Int = 100
     private var continue = true
 
     while (continue) {
@@ -270,10 +272,11 @@ object Main extends App {
         println("2. Recommendation based on query")
         println(s"3. Toggle number of mappers ($numMappers)")
         println(s"4. Toggle number of reducers ($numReducers)")
-        println("5. Quit")
+        println(s"5. Toggle number of non mutually referenced documents to look for ($nonMutuallyReferenced)")
+        println("6. Quit")
         print("Option: ")
 
-        val choice = readLine()
+        val choice = readLine().trim
 
         choice match {
             case "1" =>
@@ -289,6 +292,8 @@ object Main extends App {
                 toggleNumberOfReducers()
 
             case "5" =>
+                toggleNumberOfDocuments()
+            case "6" =>
                 println("Exiting...")
                 continue = false
 
@@ -298,7 +303,20 @@ object Main extends App {
         println()
     }
 
-    //TODO WRITE ACTOR CLOSING SEQUENCE
+    private def toggleNumberOfDocuments() = {
+        println(s"Enter the number of non mutually referenced documents (actual = $nonMutuallyReferenced): ")
+        val input = readLine()
+        val newNumActors = Try(input.toInt).getOrElse(-1)
+
+        if (newNumActors <= 0) {
+            println("Invalid number of documents. Please enter a valid integer greater than 0.")
+
+        } else if (newNumActors != nonMutuallyReferenced) {
+            nonMutuallyReferenced = newNumActors
+            println(s"Number of reducers set to $nonMutuallyReferenced.")
+        }
+    }
+
     shutdownActors()
     System.exit(0)
 }
