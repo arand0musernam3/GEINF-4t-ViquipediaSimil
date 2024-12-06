@@ -19,7 +19,7 @@ object DocumentSimilarity {
     def filterWords(string: String): Array[String] = {
         string
             .toLowerCase
-            .replaceAll("[-_'.,;:()!?¿¡\\[\\]{}$%&/\\\\@|#ºª+*^<>€=\\n\\t\\r]", " ")
+            .replaceAll("[-_'.,;:()!?¿¡\\[\\]{}$%&/\\\\@|#ºª+*^<>€=\\n\\t\\r ]", " ")
             .split("\\W+")
             .filter(_.nonEmpty)
     }

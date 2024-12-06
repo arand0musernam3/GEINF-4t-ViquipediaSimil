@@ -98,8 +98,6 @@ class MapReduce[K1,V1,K2,V2,V3](
 
             }
 
-
-
         case fromReducer(entradaDiccionari:(K2,V3)) =>
             resultatFinal += entradaDiccionari
             missatgesReducersPendents -= 1

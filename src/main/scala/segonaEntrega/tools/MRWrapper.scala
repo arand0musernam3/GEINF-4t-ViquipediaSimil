@@ -30,8 +30,4 @@ object MRWrapper {
 
         Await.result(futureResult, timeoutValue)
     }
-
-    def stopSystem() : Unit = {
-
-    }
 }
