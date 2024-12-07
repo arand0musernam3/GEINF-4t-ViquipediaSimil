@@ -8,19 +8,10 @@ import tools.{MRWrapper, ProcessFiles, Timer}
 import scala.io.StdIn.readLine
 import scala.util.Try
 
-/*
-    TODO:
-     - Fer el document per Typst
-     - Preguntar tema de les referències a en Mateu (del [[ | ]])
-     - Fer script de 1, 4, 10 i 20 actors
-     - Ampliar a més de 100 pàgines.
- */
-
 object Main extends App {
 
     private def countAverageReferences(): Unit = {
         println("Counting the average number of references...")
-        // You will enter the code for this
         print("Time spent calculating average number of references (and reading files): ")
         val result = Timer.timeMeasurement({
             MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, Nil),
@@ -92,9 +83,9 @@ object Main extends App {
             }
             else {
                 val PRvalue = computePageRank(filteredFiles)
-                println("\n\nHIGHEST PAGE RANK DOCUMENTS (4):")
-                println(PRvalue.map(p => (p._1._1, p._1._2)).sortBy(-_._2).take(4))
-
+                println("\nHIGHEST PAGE RANK DOCUMENTS (4):")
+                PRvalue.map(p => (p._1._1, p._1._2)).sortBy(-_._2).take(4).foreach(p => println(f"${p._1}%-50s: ${p._2}%.3e"))
+                println("=======")
                 println("\n\nLIST OF NON-MUTUALLY REFERENCED DOCUMENTS WITH > 0.5 COSINE SIMILARITY:")
                 Timer.timeMeasurement {
                     similarNonMutuallyReferencedDocuments(PRvalue
@@ -103,9 +94,9 @@ object Main extends App {
                         .map(_._1._1)
                         .flatMap(title => filteredFiles.find(_.title == title))
                     )
-                    print("\n\tSIMILARITY CALCULATION: ")}
+                    print("\nSIMILARITY CALCULATION: ")}
             }
-            print("\tPR + SIMILARITY CALCULATION: ")
+            print("PR + SIMILARITY CALCULATION: ")
         })
         println("=======")
     }
@@ -186,7 +177,8 @@ object Main extends App {
             .filter(_._2 >= 0.5)
             .toList
             .sortBy(-_._2)
-            .foreach(println)
+            .foreach(p => println(f"${p._1._1.take(60)}%-60s - ${p._1._2.take(60)}%-60s : ${p._2}%.4f"))
+        println("=======")
     }
 
     private def toggleNumberOfMappers(): Unit = {
@@ -200,7 +192,6 @@ object Main extends App {
         } else if (newNumActors != numMappers) {
             numMappers = newNumActors
             println(s"Number of mappers set to $numMappers.")
-            //TODO enviar canvi de nombre d'actors i que s'espavili la classe que ho gestiona, pensar bé com fer-ho.
         }
     }
 
@@ -215,7 +206,6 @@ object Main extends App {
         } else if (newNumActors != numReducers) {
             numReducers = newNumActors
             println(s"Number of reducers set to $numReducers.")
-            //TODO enviar canvi de nombre d'actors i que s'espavili la classe que ho gestiona, pensar bé com fer-ho.
         }
     }
 
@@ -276,54 +266,4 @@ object Main extends App {
     }
 
     System.exit(0)
-
-    private def testRecommendationBasedOnQuery(): Unit = {
-
-        val query = "guerra"
-
-        var proves: List[(ProcessFiles.ViquipediaFile, Boolean)] = List()
-        //proves = proves.appended((ViquipediaFile(title = "B", content = "guerra enciam hola", refs = List("C", "A"), file = null), true))
-        //proves = proves.appended((ViquipediaFile(title = "C", content = "guerra tomata tomata", refs = List("A"), file = null), true))
-        //proves = proves.appended((ViquipediaFile(title = "D", content = "guerra pa", refs = List("A", "B", "C", "E"), file = null), true))
-        //proves = proves.appended((ViquipediaFile(title = "A", content = "guerra enciam tomata pa hola", refs = List(), file = null), true))
-        //proves = proves.appended((ViquipediaFile(title = "E", content = "guerra pastanaga hola", refs = List("D"), file = null), true))
-        //proves = proves.appended((ViquipediaFile(title = "F", content = "guerra pastanaga hola", refs = List("E"), file = null), true))
-        //proves = proves.appended((ViquipediaFile(title = "G", content = "guerra enciam", refs = List("D"), file = null), true))
-        /*
-        proves = proves.appended((ViquipediaFile(title = "B", content = "guerra [[enciam]] hola", refs = List("C", "A"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "A", content = "guerra enciam [[hola | aixo es text]]", refs = List("C", "A"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "Q", content = "guerra enciam [[#referencia]]", refs = List("C", "A"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "Z", content = "guerra enciam [[hola | aixo | es text]] [[polla#gorda]]", refs = List("C", "A"), file = null), true))
-        proves = proves.appended((ViquipediaFile(title = "C", content = "[[Fitxer:Democracy claims.svg|right|350px|thumb|Des de la [[Segona Guerra Mundial]], la democràcia ha guanyat una àmplia acceptació. Aquest mapa mostra l'auto-identificació oficial feta per governs de tot el món en relació a la democràcia, el 2012. Mostra l'estatus legal de la democràcia en el món. {{legend|green|Governs que s'identifiquen com a democràtics}} {{legend|red|Governs que no s'identifiquen com a democràtics: [[Ciutat del Vaticà]], [[Oman]], [[Aràbia Saudita]], [[Emirats Àrabs Units]], [[Brunei]] i [[Fiji]].}}]]", refs = List("C", "A"), file = null), true))
-
-        val filteredProves = proves.filter(_._2).map(_._1)
-
-        val PRvalue = Timer.timeMeasurement({
-            var aux = filteredProves
-                .map(vf => ((vf.title, 1.0d / proves.size), vf.refs))
-            val epsilon = 1e-3
-            var steps = 5
-            while (steps > 0) {
-                val ret = MRWrapper.MR(aux,
-                    MappingReduceFunctions.mappingCalculatePR,
-                    MappingReduceFunctions.reduceCalculatePR(proves.length, 0.85, _, _)
-                )
-                val newAux = filteredProves.map(vf => ((vf.title, ret.getOrElse(vf.title, 0d)), vf.refs))
-                println(s"Step $steps: $newAux")
-                if (newAux.forall { case ((str, pr), _) => epsilon > Math.abs(pr - aux.find { case ((str2, _), _) => str == str2 }.get._1._2) }) {
-                    steps = 0
-                } else {
-                    steps = steps - 1
-                }
-                aux = newAux
-            }
-            aux
-        })
-        println(PRvalue.map(_._1))
-
-        similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map { case ((name, pr), refs) => ((proves.find(_._1.title == name).get._1, pr), refs) })
-
-         */
-
-    }
 }

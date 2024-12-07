@@ -100,30 +100,30 @@ object MappingReduceFunctions {
     }
 
     def reduceSimilarity(docPair: (String, String), tfidfs: List[(Map[String, Double], Map[String, Double])]): ((String, String), Double) = {
-        // Retrieve TF-IDF maps for the document pair
+        // Obtenir els maps de la mapping function
         val tfidf1 = tfidfs.head._1
         val tfidf2 = tfidfs.head._2
 
-        // Initialize accumulators
+        // Acumuladors
         var dotProduct = 0.0
         var magnitude1 = 0.0
         var magnitude2 = 0.0
 
-        // Iterate over terms in the first TF-IDF map
+        // Iterar primer tf-idf
         for ((term, value1) <- tfidf1) {
             val value2 = tfidf2.getOrElse(term, 0.0)
 
-            // Update dot product and magnitudes
+            // Actualitzar dotProduct i magnituds.
             dotProduct += value1 * value2
             magnitude1 += value1 * value1
         }
 
-        // Add remaining terms from the second map to magnitude2
+        // Iterar segon tf-idf
         for (value2 <- tfidf2.values) {
             magnitude2 += value2 * value2
         }
 
-        // Compute the cosine similarity
+        // Calcul final
         val similarity =
             if (magnitude1 == 0 || magnitude2 == 0) 0.0
             else dotProduct / (math.sqrt(magnitude1) * math.sqrt(magnitude2))
