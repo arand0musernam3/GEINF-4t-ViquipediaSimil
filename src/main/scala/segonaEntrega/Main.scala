@@ -32,20 +32,57 @@ object Main extends App {
         println(f"\n\nAverage number of unique references: $averageReferenceCount%.2f")
     }
 
+    private def computePageRank(
+                                   filteredFiles: List[ViquipediaFile],
+                                   steps: Int  = 5,
+                                   epsilon: Double = 1e-3,
+                               ): List[((String, Double), List[String])] = {
+        val totalPages = filteredFiles.size
+        var aux = filteredFiles.map(vf => ((vf.title, 1.0 / totalPages), vf.refs))
+        var remainingSteps = steps
+
+        while (remainingSteps > 0) {
+            val ret = MRWrapper.MR(
+                aux,
+                MappingReduceFunctions.mappingCalculatePR,
+                MappingReduceFunctions.reduceCalculatePR(totalPages, 0.85, _, _)
+            )
+
+            val newAux = filteredFiles.map { vf =>
+                val newPR = ret.getOrElse(vf.title, 0.0)
+                ((vf.title, newPR), vf.refs)
+            }
+
+            println(s"Step ${steps - remainingSteps + 1}: ${newAux.map(_._1).sortBy(-_._2).take(4)}")
+
+            if (newAux.forall {
+                case ((title, newPR), _) =>
+                    val oldPR = aux.find(_._1._1 == title).map(_._1._2).getOrElse(0.0)
+                    Math.abs(newPR - oldPR) <= epsilon
+            }) {
+                remainingSteps = 0
+            } else {
+                remainingSteps -= 1
+            }
+            aux = newAux
+        }
+        aux
+    }
+
     private def recommendationBasedOnQuery(): Unit = {
         println("Please enter your query:")
         val query = readLine().toLowerCase.trim
         println()
 
         Timer.timeMeasurement({
-            val occurrencesPerFile =
-                MRWrapper.MR(for (file <- ProcessFiles.getListOfFiles("viqui_files")) yield (file, Nil),
-                    MappingReduceFunctions.mappingFilterContains(query, _, _),
-                    MappingReduceFunctions.reduceFilterContains)
+            val occurrencesPerFile = MRWrapper.MR(
+                ProcessFiles.getListOfFiles("viqui_files").map(file => (file, Nil)),
+                MappingReduceFunctions.mappingFilterContains(query, _, _),
+                MappingReduceFunctions.reduceFilterContains
+            )
 
 
-            val filteredFiles = occurrencesPerFile.filter(_._2).toList.map(_._1)
-
+            val filteredFiles = occurrencesPerFile.filter(_._2).keys.toList
 
             if (filteredFiles.isEmpty) {
                 println("Query was not found in any of the documents.")
@@ -54,47 +91,30 @@ object Main extends App {
                 println(s"Only one document matches this query: ${filteredFiles.head.title}")
             }
             else {
-                val PRvalue = {
-                    var aux = filteredFiles
-                        .map(vf => ((vf.title, 1.0d / filteredFiles.size), vf.refs))
+                val PRvalue = computePageRank(filteredFiles)
+                println("\n\nHIGHEST PAGE RANK DOCUMENTS (4):")
+                println(PRvalue.map(p => (p._1._1, p._1._2)).sortBy(-_._2).take(4))
 
-                    //evaluation loop
-                    val epsilon = 1e-3
-                    var steps = 5
-                    while (steps > 0) {
-                        val ret = MRWrapper.MR(aux,
-                            MappingReduceFunctions.mappingCalculatePR,
-                            MappingReduceFunctions.reduceCalculatePR(filteredFiles.length, 0.85, _, _)
-                        )
-
-                        val newAux = filteredFiles.map(vf => ((vf.title, ret.getOrElse(vf.title, 0d)), vf.refs))
-
-                        println(s"Step $steps: ${newAux.map(_._1).sortBy(-_._2).take(4)}")
-                        if (newAux.forall { case ((str, pr), _) => epsilon > Math.abs(pr - aux.find { case ((str2, _), _) => str == str2 }.get._1._2) }) {
-                            steps = 0
-                        } else {
-                            steps = steps - 1
-                        }
-                        aux = newAux
-                    }
-
-                    aux
-                }
-                println(PRvalue.map(_._1).sortBy(-_._2).take(4))
-
-                Timer.timeMeasurement({
-                    similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(nonMutuallyReferenced)
-                        .map { case ((name, pr), refs) => ((occurrencesPerFile.find(_._1.title == name).get._1, pr), refs) })
-                })
+                println("\n\nLIST OF NON-MUTUALLY REFERENCED DOCUMENTS WITH > 0.5 COSINE SIMILARITY:")
+                Timer.timeMeasurement {
+                    similarNonMutuallyReferencedDocuments(PRvalue
+                        .sortBy(-_._1._2)
+                        .take(nonMutuallyReferenced)
+                        .map(_._1._1)
+                        .flatMap(title => filteredFiles.find(_.title == title))
+                    )
+                    print("\n\tSIMILARITY CALCULATION: ")}
             }
+            print("\tPR + SIMILARITY CALCULATION: ")
         })
+        println("=======")
     }
 
-    private def similarNonMutuallyReferencedDocuments(PRs: List[((ViquipediaFile, Double), List[String])]): Unit = {
+    private def similarNonMutuallyReferencedDocuments(PRs: List[ViquipediaFile]): Unit = {
 
         val contentFilteredDocuments =
             MRWrapper.MR(
-                PRs,
+                PRs.map(p => (p, Nil)),
                 MappingReduceFunctions.mappingFilterDocuments,
                 MappingReduceFunctions.reduceFilterDocuments
             )
@@ -110,25 +130,24 @@ object Main extends App {
                     MappingReduceFunctions.mappingObtainMutuallyRefDocuments,
                     MappingReduceFunctions.reduceObtainMutuallyRefDocuments
                 )
-                .filter(_._2) // Keep only mutually referenced pairs
-                .map { case ((a, b), _) => if (a < b) (a, b) else (b, a) }
-                .toSet
+                .filter(_._2).keySet
+                .map { case (a, b) => if (a < b) (a, b) else (b, a) }
 
 
         // Generate all possible document pairs and filter out mutually referenced pairs
         val nonMutuallyReferencedDocPairs = {
             val allDocPairs = for {a <- allDocTitles; b <- allDocTitles if a < b} yield (a, b)
-            allDocPairs.toSet.diff(mutuallyReferencedDocPairs).toList
+            allDocPairs.toSet.diff(mutuallyReferencedDocPairs)
         }
 
         // Extract unique documents from non-mutually referenced pairs
-        val nonMutuallyReferencedDocs = Set(nonMutuallyReferencedDocPairs.flatMap {
+        val nonMutuallyReferencedDocs = nonMutuallyReferencedDocPairs.flatMap {
             case (doc1Title, doc2Title) =>
                 Seq(
                     allDocs.find(_.title == doc1Title).get,
                     allDocs.find(_.title == doc2Title).get
                 )
-        }: _*)
+        }
 
         // Calculate word frequency (TF)
         val wordFreq = MRWrapper.MR(
@@ -147,9 +166,9 @@ object Main extends App {
 
 
         // Calculate TF-IDF
-        val tfIdfPerWord = MRWrapper.MR(
+        val tfIdfPerDoc = MRWrapper.MR(
             wordFreq.map { case ((doc, word), freq) =>
-                (((doc, word), freq), Nil)
+                (((doc.title, word), freq), Nil)
             }.toList,
             MappingReduceFunctions.mappingTfIdfPerDoc(documentInverseFreq, _, _),
             MappingReduceFunctions.reduceTfIdfPerDoc
@@ -159,11 +178,9 @@ object Main extends App {
         // Calculate cosine similarity between document pairs
         MRWrapper.MR(
                 nonMutuallyReferencedDocPairs.map { case (doc1Title, doc2Title) =>
-                    val doc1 = nonMutuallyReferencedDocs.find(_.title == doc1Title).get
-                    val doc2 = nonMutuallyReferencedDocs.find(_.title == doc2Title).get
-                    ((doc1, doc2), Nil)
-                },
-                MappingReduceFunctions.mappingSimilarity(tfIdfPerWord, _, _),
+                    ((doc1Title, doc2Title), Nil)
+                }.toList,
+                MappingReduceFunctions.mappingSimilarity(tfIdfPerDoc, _, _),
                 MappingReduceFunctions.reduceSimilarity
             )
             .filter(_._2 >= 0.5)
@@ -272,7 +289,7 @@ object Main extends App {
         //proves = proves.appended((ViquipediaFile(title = "E", content = "guerra pastanaga hola", refs = List("D"), file = null), true))
         //proves = proves.appended((ViquipediaFile(title = "F", content = "guerra pastanaga hola", refs = List("E"), file = null), true))
         //proves = proves.appended((ViquipediaFile(title = "G", content = "guerra enciam", refs = List("D"), file = null), true))
-
+        /*
         proves = proves.appended((ViquipediaFile(title = "B", content = "guerra [[enciam]] hola", refs = List("C", "A"), file = null), true))
         proves = proves.appended((ViquipediaFile(title = "A", content = "guerra enciam [[hola | aixo es text]]", refs = List("C", "A"), file = null), true))
         proves = proves.appended((ViquipediaFile(title = "Q", content = "guerra enciam [[#referencia]]", refs = List("C", "A"), file = null), true))
@@ -305,6 +322,8 @@ object Main extends App {
         println(PRvalue.map(_._1))
 
         similarNonMutuallyReferencedDocuments(PRvalue.sortBy(-_._1._2).take(100).map { case ((name, pr), refs) => ((proves.find(_._1.title == name).get._1, pr), refs) })
+
+         */
 
     }
 }
