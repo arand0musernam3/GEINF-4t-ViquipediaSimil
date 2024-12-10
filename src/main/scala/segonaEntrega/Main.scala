@@ -182,30 +182,30 @@ object Main extends App {
     }
 
     private def toggleNumberOfMappers(): Unit = {
-        println(s"Enter the number of mappers (actual = $numMappers): ")
+        println(s"Enter the number of mappers (actual = ${MRWrapper.mapperNumber}): ")
         val input = readLine()
         val newNumActors = Try(input.toInt).getOrElse(-1)
 
         if (newNumActors <= 0) {
             println("Invalid number of actors. Please enter a valid integer greater than 0.")
 
-        } else if (newNumActors != numMappers) {
-            numMappers = newNumActors
-            println(s"Number of mappers set to $numMappers.")
+        } else if (newNumActors != MRWrapper.mapperNumber) {
+            MRWrapper.mapperNumber = newNumActors
+            println(s"Number of mappers set to ${MRWrapper.mapperNumber}.")
         }
     }
 
     private def toggleNumberOfReducers(): Unit = {
-        println(s"Enter the number of reducers (actual = $numReducers): ")
+        println(s"Enter the number of reducers (actual = ${MRWrapper.reducerNumber}): ")
         val input = readLine()
         val newNumActors = Try(input.toInt).getOrElse(-1)
 
         if (newNumActors <= 0) {
             println("Invalid number of actors. Please enter a valid integer greater than 0.")
 
-        } else if (newNumActors != numReducers) {
-            numReducers = newNumActors
-            println(s"Number of reducers set to $numReducers.")
+        } else if (newNumActors != MRWrapper.reducerNumber) {
+            MRWrapper.reducerNumber = newNumActors
+            println(s"Number of reducers set to ${MRWrapper.reducerNumber}.")
         }
     }
 
@@ -223,8 +223,6 @@ object Main extends App {
         }
     }
 
-    private var numMappers: Int = 1
-    private var numReducers: Int = 1
     private var nonMutuallyReferenced: Int = 100
     private var continue = true
 
@@ -232,8 +230,8 @@ object Main extends App {
         println("Select an option:")
         println("1. Count the average number of references of all documents")
         println("2. Recommendation based on query")
-        println(s"3. Toggle number of mappers ($numMappers)")
-        println(s"4. Toggle number of reducers ($numReducers)")
+        println(s"3. Toggle number of mappers (${MRWrapper.mapperNumber})")
+        println(s"4. Toggle number of reducers (${MRWrapper.reducerNumber})")
         println(s"5. Toggle number of non mutually referenced documents to look for ($nonMutuallyReferenced)")
         println("6. Quit")
         print("Option: ")
